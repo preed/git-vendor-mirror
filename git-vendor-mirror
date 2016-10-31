@@ -14,7 +14,6 @@
 # cleanup tmpfiles
 # helper functions for branch names
 # Centralize git commands
-# Fix git add problem
 #
 
 from datetime import datetime
@@ -249,6 +248,56 @@ def DoImport(opts, args):
     if gitAdd.returncode != 0:
         raise RuntimeError("Git add failed; %s" % (out))
 
+    gitStatus = Popen([GIT_BIN, 'status', '--porcelain', '-z', '.'],
+     cwd=opts.git_repo, stdout=PIPE, stderr=STDOUT,
+     universal_newlines=True)
+    out, err = gitStatus.communicate()
+
+    if gitStatus.returncode != 0:
+        raise RuntimeError("Git status during add validation failed; %s" %
+         (out))
+
+    pendingAdds = []
+    for statusEntry in out.split('\0')[:-1]:
+        pendingAdds.append(statusEntry[3:])
+
+    #for p in pendingAdds:
+    #    print p
+
+    missedAdds = []
+    gitRepoPath = os.getcwd()
+
+    for root, dirs, files in os.walk(gitRepoPath, topdown=True):
+        # Ignore the .git directories, if they exist
+        try:
+            dirs.remove('.git')
+        except ValueError:
+            pass
+
+        # Git won't add empty directories, so if the tarball creates an
+        # empty directory, it _may_ assume that it exists in the repo
+        # for some reason; warn on this odd corner case.
+        for d in dirs:
+             if len(os.listdir(os.path.join(root, d))) == 0:
+                 missedAdds.append(os.path.join(root, d))
+
+        for f in files:
+            entry = os.path.join(root, f)
+            # Since we're os.walk()ing from the gitRepoPath, root includes
+            # the full path on the file system; but git only knows about the
+            # path relative to the repo, so strip that prefix off.
+            gitRepoEntry = entry[len(gitRepoPath) + 1:]
+
+            try:
+                pendingAdds.remove(gitRepoEntry)
+            except ValueError:
+                missedAdds.append(gitRepoEntry)
+
+    assert len(pendingAdds) == 0, ("pendingAdds should always be empty after "
+     "traversing the file system")
+
+    missedAdds.sort()
+
     fileStatInfo = os.stat(filenameFullPath)
 
     commitMesg = """Import %s version %s.
@@ -280,13 +329,34 @@ GetFileHash(filenameFullPath), GetFileHash(filenameFullPath, 'sha256'))
     if gitTag.returncode != 0:
         raise RuntimeError("Git tag of import failed: %s" % (out))
 
-    print """Validate the %s version %s import looks the way you expect with Git log.
+    missedAddsWarningStr = ""
+    if len(missedAdds) > 0:
+        missedAddsWarningStr = """
 
-Publish the %s version %s import with:
+=============================================
+WARNING: the following directory entries were not added during the 'git add'
+operation:
+
+%s
+
+This usually occurs because of an entry in .gitignore that matches a
+source file. (This usually happens a .gitignore entry was added after the
+source file in question was added or due to unit test data.)
+
+To correct this, 'git add -f' the above files and then append them to the
+existing git commit with 'git commit --append'
+=============================================
+
+""" % ("\n".join(missedAdds))
+
+
+    print """Validate the %s version %s import looks the way you expect with Git log.
+%s
+After you are satisfied, publish the %s version %s import with:
 
         git push --tags origin %s
-""" % (opts.package_name, opts.package_version, opts.package_name,
-opts.package_version, projectBranch)
+""" % (opts.package_name, opts.package_version, missedAddsWarningStr,
+opts.package_name, opts.package_version, projectBranch)
 
 def DoSetupVendorTrackingBranch(opts, args):
     if (opts.vendor_name is None or
