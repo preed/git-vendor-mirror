@@ -114,7 +114,8 @@ def UnzipFile(zipfile, dest, stripPath=0):
                 # Set executable bit on executable files in the archive
                 if (memberPerms & stat.S_IXUSR or memberPerms & stat.S_IXGRP or
                  memberPerms & stat.S_IXOTH):
-                    os.chmod(memberPath, os.stat(memberPath).st_mode |
+                    os.chmod(memberDestFullPath,
+                     os.stat(memberDestFullPath).st_mode |
                      ((stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH ) & ~umask))
         else:
             for member in zipfileHandle.namelist():
