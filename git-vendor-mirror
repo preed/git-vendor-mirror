@@ -14,7 +14,11 @@
 # cleanup tmpfiles
 # helper functions for branch names
 # option to fetch/expand submodules
-#
+#   Coalesce the umask/chmod() code in UnzipFile(), which is cut/paste
+#     (In fact, that code should be refactored to remove use of extract()
+#      altogether, even in the stripPath=0 case; extract doesn't do as
+#      much as I thought it did, so having two cases for that code is
+#      mostly-pointless.)
 
 from datetime import datetime
 import hashlib
