@@ -35,10 +35,10 @@ def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
  mixOutput=True):
 
     if gitCmdArgs is None:
-        raise ValueError("RunGitCmd: must provide git arguments.")
+        raise ValueError("RunGitCmd: must provide git array of arguments.")
 
-    if not exceptionContext:
-        exceptionContext = "No context provided for this git operation."
+    if exceptionContext is None:
+        exceptionContext = "No context provided for this git exception."
 
     if mixOutput:
         stderrHandle = STDOUT
@@ -57,7 +57,7 @@ def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
 
 def GetFileHash(filename, hashType='sha1'):
     if hashType not in hashlib.algorithms:
-        raise ValueError("Invalid hash selected: %s" % (hashType))
+        raise ValueError("Invalid checksum hash: %s" % (hashType))
 
     hashObj = hashlib.new(hashType)
 
