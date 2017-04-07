@@ -302,8 +302,8 @@ def DoImport(opts, args):
 %s
 File size: %s
 File mtime: %s
-SHA1 checksum: %s
-SHA256 checksum: %s
+File SHA1 checksum: %s
+File SHA256 checksum: %s
 """ % (opts.package_name, opts.package_version, fileProvenenceCommitInfo,
 fileStatInfo.st_size,
 datetime.fromtimestamp(fileStatInfo.st_mtime).strftime('%c'),
