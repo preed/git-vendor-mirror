@@ -262,7 +262,7 @@ def DoImport(opts, args):
     #    print p
 
     missedAdds = []
-    gitRepoPath = os.getcwd()
+    gitRepoPath = os.path.abspath(opts.git_repo)
 
     for root, dirs, files in os.walk(gitRepoPath, topdown=True):
         # Ignore the .git directories, if they exist
