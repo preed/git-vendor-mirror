@@ -440,6 +440,8 @@ def main(argv):
 
         # Then, call the handler for the specified mode...
         VALID_MODES[mode](options, args)
+    except KeyboardInterrupt:
+        return 0
     except Exception, ex:
         print >> sys.stderr, ex
         return 1
