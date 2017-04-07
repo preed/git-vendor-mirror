@@ -384,8 +384,10 @@ VALID_MODES = {
 }
 
 def main(argv):
-    # TODO: Add help, re: mode
-    o = OptionParser()
+    availableModes = ', '.join(VALID_MODES.keys())
+    usageStr = ("Usage: %s [mode] [options]\nAvailable modes: %s" %
+     (os.path.basename(sys.argv[0]), availableModes))
+    o = OptionParser(usage=usageStr)
 
     o.add_option('-V', '--vendor',
                  dest='vendor_name', default=None,
@@ -424,8 +426,7 @@ def main(argv):
         try:
             mode = args[0]
         except IndexError:
-            raise ValueError("Must specify a mode: %s" %
-             (', '.join(VALID_MODES.keys())))
+            raise ValueError("Must specify a mode: %s" % availableModes)
 
         if mode not in VALID_MODES.keys():
             raise ValueError("Invalid Mode: %s" % (mode))
