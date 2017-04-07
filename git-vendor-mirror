@@ -53,7 +53,7 @@ def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
         raise RuntimeError("%s: %s, %s, %s" % (exceptionContext,
          gitCmd.returncode, out, err))
 
-    return (out, err)
+    return (out, err, gitCmd.returncode)
 
 def GetFileHash(filename, hashType='sha1'):
     if hashType not in hashlib.algorithms:
@@ -114,7 +114,7 @@ def ClearGitRepo(repo):
         else:
             gitArgs = ['rm', entry]
 
-        out, err = RunGitCmd(gitArgs, repo,
+        out, err, rv = RunGitCmd(gitArgs, repo,
          "Failed to clean up git repo prior to import for entry: %s" % (entry))
 
         repoNeedsCommit = True
@@ -126,7 +126,7 @@ def ClearGitRepo(repo):
         commitMesg = ("Cleaning Git repository in preparation for import of %s "
          "version %s" % (opts.package_name, opts.package_version))
 
-        out, err = RunGitCmd(['commit', '-a', '-m', commitMesg],
+        RunGitCmd(['commit', '-a', '-m', commitMesg],
          repo, "Git commit of clean repo failed")
 
 def DownloadFile(url, localFile):
@@ -147,7 +147,7 @@ def DownloadFile(url, localFile):
         urlHandle.close()
 
 def GetGitRepoBranchList(repo):
-    out, err = RunGitCmd(['for-each-ref', '--format=%(refname:short)',
+    out, err, rv = RunGitCmd(['for-each-ref', '--format=%(refname:short)',
      'refs/heads/'], repo,
      "Obtaining git repo branch list failed")
 
@@ -163,11 +163,15 @@ def GitCheckout(repo, branch, createBranch=False):
             raise ValueError("GitCheckout(): non-existent git branch %s and "
              "createBranch not specified" % (branch))
 
-    out, err = RunGitCmd(['checkout'] + checkoutArgs, repo,
+    RunGitCmd(['checkout'] + checkoutArgs, repo,
         "Failed to checkout branch %s" % (branch))
 
 def ValidateGitRepo(repo):
-    out, err = RunGitCmd(['status'], repo, "Invalid Git repo %s" % (repo))
+    try:
+        out, err, rv = RunGitCmd(['status'], repo, "Invalid Git repo %s" %
+         (repo))
+    except RuntimeError, ex:
+        raise ValueError(ex)
 
     repoClean = None
     foundBranch = False
@@ -246,8 +250,8 @@ def DoImport(opts, args):
     stripPath = int(opts.strip_path)
     explodeArchiveHandler(filenameFullPath, opts.git_repo, stripPath)
 
-    out, err = RunGitCmd(['add', '.'], opts.git_repo, "Git add failed")
-    out, err = RunGitCmd(['status', '--porcelain', '-z', '.'],
+    RunGitCmd(['add', '.'], opts.git_repo, "Git add failed")
+    out, err, rv = RunGitCmd(['status', '--porcelain', '-z', '.'],
      opts.git_repo, "Git status during add validation failed")
 
     pendingAdds = []
@@ -305,14 +309,14 @@ fileStatInfo.st_size,
 datetime.fromtimestamp(fileStatInfo.st_mtime).strftime('%c'),
 GetFileHash(filenameFullPath), GetFileHash(filenameFullPath, 'sha256'))
 
-    out, err = RunGitCmd(['commit', '-a', '-m', commitMesg],
-     opts.git_repo, "Git commit of import failed")
+    RunGitCmd(['commit', '-a', '-m', commitMesg], opts.git_repo,
+     "Git commit of import failed")
 
     tagName = "%s-%s" % (opts.package_name, opts.package_version)
     tagMesg = "Version %s of %s." % (opts.package_version, opts.package_name)
 
-    out, err = RunGitCmd(['tag', '-a', '-m', tagMesg, tagName],
-     opts.git_repo, "Git tag of import failed")
+    RunGitCmd(['tag', '-a', '-m', tagMesg, tagName], opts.git_repo,
+     "Git tag of import failed")
 
     missedAddsWarningStr = ""
     if len(missedAdds) > 0:
