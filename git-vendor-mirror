@@ -488,10 +488,31 @@ You can publish the vendor branch with:
         git push origin %s
 """ % (vendorBranch, vendorBranch)
 
+# Create a branch (project-upstream-update-v1.x
+# git rm -r *
+# Validate empty repo
+# git commit
+# download package and dump into directory
+# Git add .
+# git commit
+# prompt to append for missing files (or, at least, handle that);
+#   might need a second mode for that.
+# git rebase -i GIT_SEQUENCE_EDITOR
+# squash the commits
+# git checkout projecg-upstream
+# git merge --ff-only project-upstream-update-v1.x
+# git tag project-1.x project-upstream-update-v1.0
+# git branch -d project-upstream-update-v1.x
+# Tell user to inspect and git push --tags project-upstream
+def DoUpdate(opts, args):
+    pass
+
+
 # This must be defined after all the mode handler functions are defined.
 VALID_MODES = {
     'import': DoImport,
     'setup-vendor-tracking-branch': DoSetupVendorTrackingBranch,
+    'update': DoUpdate,
 }
 
 def main(argv):
