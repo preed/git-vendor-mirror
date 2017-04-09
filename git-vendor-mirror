@@ -31,6 +31,8 @@ GIT_BIN = os.getenv('GIT', 'git')
 
 READ_CHUNK_SZ = 8192
 
+VERSION = '0.1.0'
+
 def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
  mixOutput=True):
 
@@ -385,8 +387,11 @@ VALID_MODES = {
 
 def main(argv):
     availableModes = ', '.join(VALID_MODES.keys())
-    usageStr = ("Usage: %s [mode] [options]\nAvailable modes: %s" %
-     (os.path.basename(sys.argv[0]), availableModes))
+    progName = os.path.basename(sys.argv[0])
+    usageStr = ("Usage: %s [mode] [options]\n"
+     "Available modes: %s\n\n"
+     "Version: %s" % (progName, availableModes, VERSION))
+
     o = OptionParser(usage=usageStr)
 
     o.add_option('-V', '--vendor',
