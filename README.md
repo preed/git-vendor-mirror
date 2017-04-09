@@ -59,7 +59,7 @@ Finally, `git-vendor-mirror` provides an option to "strip" directories off of an
 
 The `--strip-path` option allows you to strip an arbitrary number of paths off the archive if necessary. In _most_ cases, you'll need this option, and the value will be `1`, to strip off the top-level directory.
 
-Putting all these together, the command to run the import would look like the following (which has been split over several lines for the sake of readability):
+Putting all these together, the command to run the import would look like the following, which has been split over several lines to improve readability. (We also used the short-form of the above arguments; you may want to look at `git-vendor-mirror --help`):
 
 ```
 [you@machine workdir]$ ~/path-to/git-vendor-mirror/git-vendor-mirror \
@@ -97,7 +97,7 @@ Back in the source directory you just imported:
 [you@machine workdir]$ ~/path-to/git-vendor-mirror/git-vendor-mirror \
       setup-vendor-tracking-branch \
       -V acme \
-      -n rapidjson \
+      -n rapidjson
 ```
 
 The script will give you further instructions on what to do when it runs, but generally it just involves pushing the result to your repository of record:
