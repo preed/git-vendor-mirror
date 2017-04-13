@@ -29,7 +29,9 @@ If none of those perspectives or requirements are compelling to you, then we con
 
 - **The Entire World Isn't Always GitHub Every-Time-All-the-Time**: GitHub is great. Lots of people and projects use it and love it. Others can't use it. This makes the "just use a GitHub fork"-solution unavailable to those folks. `git-vendor-mirror` doesn't care where you get your source code, so it's great for managing source code for situations where you need GitHub-hosted code, but don't host the code that needs that code on GitHub.
 
-# Design Non-considerations
+# Design Non-goals
+
+The following are design goals and use cases which `git-vendor-mirror` specifically considered, and either does not optimize _or_ does not purport to solve the problem and/or use case.
 
 - **Project participation**: `git-vendor-mirror` is not primarily designed with facilitating _participation_ in an open source project that you may also be using to ship a product to customers. _That said_, `git-vendor-mirror` _does_ support a workflow wherein you can create pull requests from your private, customized patches to share them with the community. (This is why we try to avoid using standardized branch names, like `master`.) But this is on a per-developer basis, and not a workflow that we're particularly concerned with facilitating. (We do, however, consider it important that we make patch-sharing _possible_, because we think sharing code back with the community is what makes open source work, and is important.)
 
