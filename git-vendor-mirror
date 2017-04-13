@@ -307,6 +307,63 @@ def DoImport(opts, args):
         raise ValueError('One of a package URL (-u), a package file name (-f), '
          'or package directory (-d) must be specified in import mode.')
 
+
+    projectBranch = "%s-upstream" % (opts.package_name)
+
+    if projectBranch in GetGitRepoBranchList(opts.git_repo):
+        raise ValueError("Upstream project tracking branch already "
+         "exists: %s. (Did you mean to use 'update' mode?)" % (projectBranch))
+
+    # If this branch exists, fail... "Did you mean import?"
+    GitCheckout(opts.git_repo, projectBranch, createBranch=True)
+    PerformPackageImportOrUpdate(opts, args, checkinBranch=projectBranch)
+
+def DoUpdate(opts, args):
+    if (opts.vendor_name is None or
+     opts.package_version is None or
+     opts.package_name is None):
+        raise ValueError('Vendor name (-V), package name (-n), and package '
+         'version (-v) are required in update mode.')
+
+    if (opts.package_url is None and
+     opts.package_file is None and
+     opts.package_dir is None):
+        raise ValueError('One of a package URL (-u), a package file name (-f), '
+         'or package directory (-d) must be specified in update mode.')
+
+    updateBranch = "%s-upstream-update-v%s" % (opts.package_name,
+     opts.package_version)
+
+    if updateBranch in GetGitRepoBranchList(opts.git_repo):
+        raise ValueError("Upstream project tracking branch already exists for "
+         "version %s: %s. (Unfinished update?)" % (updateBranch, projectBranch))
+
+    GitCheckout(opts.git_repo, updateBranch, createBranch=True)
+    PerformPackageImportOrUpdate(opts, args, checkinBranch=updateBranch)
+
+    # prompt to append for missing files (or, at least, handle that);
+    #   might need a second mode for that.
+
+
+    # git rebase -i GIT_SEQUENCE_EDITOR
+    # squash the commits
+    # git checkout projecg-upstream
+    # git merge --ff-only project-upstream-update-v1.x
+    # git tag project-1.x project-upstream-update-v1.0
+    # git branch -d project-upstream-update-v1.x
+    # Tell user to inspect and git push --tags project-upstream
+
+
+# This was refactored out because the main difference between package import
+# and update logic is which branch this occurs on. The update code also does
+# some additional steps after the import.
+#
+# In the import case, we check directly in to $project-upstream branch; in
+# the update case, we create a working branch off of that.
+#
+# That's what the checkinBranch argument accounts for.
+
+def PerformPackageImportOrUpdate(opts, args, checkinBranch=None):
     # Get this out of the way early...
     #
     # Just to be clear: the rest of this function doesn't expect to handle
@@ -456,7 +513,7 @@ After you are satisfied, publish the %s version %s import with:
 
         git push --tags origin %s
 """ % (opts.package_name, opts.package_version, missedAddsWarningStr,
-opts.package_name, opts.package_version, projectBranch)
+opts.package_name, opts.package_version, checkinBranch)
 
 def DoSetupVendorTrackingBranch(opts, args):
     if (opts.vendor_name is None or
@@ -487,26 +544,6 @@ You may inspect it with git log/gitk.
 You can publish the vendor branch with:
         git push origin %s
 """ % (vendorBranch, vendorBranch)
-
-# Create a branch (project-upstream-update-v1.x
-# git rm -r *
-# Validate empty repo
-# git commit
-# download package and dump into directory
-# Git add .
-# git commit
-# prompt to append for missing files (or, at least, handle that);
-#   might need a second mode for that.
-# git rebase -i GIT_SEQUENCE_EDITOR
-# squash the commits
-# git checkout projecg-upstream
-# git merge --ff-only project-upstream-update-v1.x
-# git tag project-1.x project-upstream-update-v1.0
-# git branch -d project-upstream-update-v1.x
-# Tell user to inspect and git push --tags project-upstream
-def DoUpdate(opts, args):
-    pass
-
 
 # This must be defined after all the mode handler functions are defined.
 VALID_MODES = {
