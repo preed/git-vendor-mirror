@@ -13,6 +13,7 @@
 # Validate SSL?
 # cleanup tmpfiles
 # helper functions for branch names
+# option to fetch/expand submodules
 #
 
 from datetime import datetime
