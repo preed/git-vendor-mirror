@@ -305,7 +305,7 @@ def DoImport(opts, args):
             opts.package_file is None and
             opts.package_dir is None):
         raise ValueError('One of a package URL (-u), a package file name (-f), '
-         'or package directory (-d)    must be specified in import mode.')
+         'or package directory (-d) must be specified in import mode.')
 
     # Get this out of the way early...
     #
@@ -318,6 +318,19 @@ def DoImport(opts, args):
     # First, make sure we're dealing with a file we know how to deal with; this
     # is only needed in URL and file modes
     explodeArchiveHandler = None
+
+    if opts.archive_format is not None:
+        fileExtension = opts.archive_format
+    else:
+        # Get the file extension, sans '.'
+        fileExtension = os.path.splitext(filename)[1][1:]
+
+    try:
+        explodeArchiveHandler = KNOWN_ARCHIVE_FORMATS[fileExtension]
+    except KeyError:
+        raise ValueError("Unable to handle packages with archive type of %s; "
+         "available archive formats: %s" % (fileExtension,
+         ', '.join(KNOWN_ARCHIVE_FORMATS.keys())))
 
     if opts.package_url:
         filename = os.path.basename(opts.package_url)
@@ -336,19 +349,6 @@ def DoImport(opts, args):
              (filenameFullPath))
     else:
         assert False, "Unhandled import mode."
-
-    if opts.archive_format is not None:
-        fileExtension = opts.archive_format
-    else:
-        # Get the file extension, sans '.'
-        fileExtension = os.path.splitext(filename)[1][1:]
-
-    try:
-        explodeArchiveHandler = KNOWN_ARCHIVE_FORMATS[fileExtension]
-    except KeyError:
-        raise ValueError("Unable to handle packages with archive type of %s; "
-         "available archive formats: %s" % (fileExtension,
-         ', '.join(KNOWN_ARCHIVE_FORMATS.keys())))
 
     projectBranch = "%s-upstream" % (opts.package_name)
 
