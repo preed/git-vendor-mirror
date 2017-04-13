@@ -14,7 +14,11 @@
 # cleanup tmpfiles
 # helper functions for branch names
 # option to fetch/expand submodules
-#
+#   Coalesce the umask/chmod() code in UnzipFile(), which is cut/paste
+#     (In fact, that code should be refactored to remove use of extract()
+#      altogether, even in the stripPath=0 case; extract doesn't do as
+#      much as I thought it did, so having two cases for that code is
+#      mostly-pointless.)
 
 from datetime import datetime
 import hashlib
@@ -22,6 +26,7 @@ from optparse import OptionParser
 import os
 import re
 from socket import getfqdn
+import stat
 from subprocess import Popen, PIPE, STDOUT
 import sys
 from tempfile import gettempdir
@@ -76,6 +81,11 @@ def GetFileHash(filename, hashType='sha1'):
 
 def UnzipFile(zipfile, dest, stripPath=0):
     print "Unzipping %s to %s with stripPath %s" % (zipfile, dest, stripPath)
+
+    # Get (and reset) the currrent umask
+    umask = os.umask(0)
+    os.umask(umask)
+
     with ZipFile(zipfile, 'r') as zipfileHandle:
         # We do this manually instead of using extractall() because extract()
         # sanitizes absolute and '..'-containing paths in a reasonable way, so
@@ -91,15 +101,35 @@ def UnzipFile(zipfile, dest, stripPath=0):
                 memberDest = os.sep.join(pathParts)
                 memberDestFullPath = os.path.join(dest, memberDest)
 
+                memberInfo = zipfileHandle.getinfo(member)
+                memberPerms = (memberInfo.external_attr >> 16L)
+
                 #print "%s -> %s" % (member.filename, memberDestFullPath)
                 if member.filename.endswith('/'):
                     os.makedirs(memberDestFullPath)
                 else:
                     with open(memberDestFullPath, 'wb') as destFileHandle:
                         destFileHandle.write(zipfileHandle.read(member))
+
+                # Set executable bit on executable files in the archive
+                if (memberPerms & stat.S_IXUSR or memberPerms & stat.S_IXGRP or
+                 memberPerms & stat.S_IXOTH):
+                    os.chmod(memberDestFullPath,
+                     os.stat(memberDestFullPath).st_mode |
+                     ((stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH ) & ~umask))
         else:
             for member in zipfileHandle.namelist():
+                memberInfo = zipfileHandle.getinfo(member)
+                memberPath = os.path.join(dest, memberInfo.filename)
                 zipfileHandle.extract(member, dest)
+
+                memberPerms = (memberInfo.external_attr >> 16L)
+
+                # Set executable bit on executable files in the archive
+                if (memberPerms & stat.S_IXUSR or memberPerms & stat.S_IXGRP or
+                 memberPerms & stat.S_IXOTH):
+                    os.chmod(memberPath, os.stat(memberPath).st_mode |
+                     ((stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH ) & ~umask))
 
 KNOWN_ARCHIVE_FORMATS = {
     'zip': UnzipFile,
