@@ -34,6 +34,8 @@ from tempfile import gettempdir
 from urllib2 import urlopen, URLError, HTTPError
 from zipfile import ZipFile
 
+import time
+
 GIT_BIN = os.getenv('GIT', 'git')
 
 READ_CHUNK_SZ = 8192
@@ -344,15 +346,19 @@ def DoUpdate(opts, args):
     # prompt to append for missing files (or, at least, handle that);
     #   might need a second mode for that.
 
+    os.environ['__GIT_VENDOR_MIRROR_UPDATE_IN_REBASE', '1'];
+    os.environ['GIT_SEQUENCE_EDITOR', sys.argv[0]];
 
     # git rebase -i GIT_SEQUENCE_EDITOR
     # squash the commits
+
+    del os.environ['__GIT_VENDOR_MIRROR_UPDATE_IN_REBASE'];
+
     # git checkout projecg-upstream
     # git merge --ff-only project-upstream-update-v1.x
     # git tag project-1.x project-upstream-update-v1.0
     # git branch -d project-upstream-update-v1.x
     # Tell user to inspect and git push --tags project-upstream
-
 
 # This was refactored out because the main difference between package import
 # and update logic is which branch this occurs on. The update code also does
@@ -552,7 +558,44 @@ VALID_MODES = {
     'update': DoUpdate,
 }
 
+def DoRebaseSquashUpdateCommits():
+    rebaseManifest = sys.argv[1]
+
+    print >> sys.stderr, "Rebase file is: %s" % (rebaseManifest)
+    print >> sys.stderr, "Sleeping 2..."
+
+    time.sleep(2)
+
+    oldRebaseFileLines = []
+    with open(rebaseManifest, 'r') as rebaseFileHandle:
+        oldRebaseFileLines = rebaseFileHandle.readlines()
+
+    with open(rebaseManifest, 'wb') as newRebaseFileHandle:
+        firstLine = oldRebaseFileLines[0]
+
+        if not re.match('^pick [0-9a-f]+', firstLine):
+            raise ValueError("Malformed first line of rebase file?" %
+             (firstLine))
+        print >> newRebaseFileHandle, firstLine,
+
+        for line in oldRebaseFileLines[1:]:
+            commitLineRegex = re.match('^pick (.+)$', line)
+
+            if commitLineRegex is not None:
+                print >> newRebaseFileHandle, "%s %s" % ('squash',
+                 commitLineRegex.group(1).rstrip())
+            else:
+                print >> newRebaseFileHandle, line,
+
 def main(argv):
+    if '__GIT_VENDOR_MIRROR_UPDATE_IN_REBASE' in os.environ.keys():
+        try:
+            DoRebaseSquashUpdateCommits()
+        except Exception, ex:
+            print >> sys.stderr, "GIT_SEQUENCE_EDITOR mode failed: %s" % (ex)
+            return 1
+        return 0
+
     availableModes = ', '.join(VALID_MODES.keys())
     progName = os.path.basename(sys.argv[0])
     usageStr = ("Usage: %s [mode] [options]\n"
