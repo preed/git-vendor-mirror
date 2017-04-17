@@ -41,7 +41,11 @@ from zipfile import ZipFile
 
 GIT_BIN = os.getenv('GIT', 'git')
 
+# Constants
 READ_CHUNK_SZ = 8192
+
+MODE_IMPORT = 0
+MODE_UPDATE = 1
 
 VERSION = '0.1.0+'
 
@@ -387,7 +391,15 @@ After you are satisfied, publish the %s version %s import with:
 #
 # That's what the checkinBranch argument accounts for.
 
-def PerformPackageImportOrUpdate(opts, args, checkinBranch=None):
+def PerformPackageImportOrUpdate(opts, args, mode=None, checkinBranch=None):
+    # Validate given mode
+    if mode == MODE_IMPORT:
+        actionString = "Import"
+    elif mode == MODE_UPDATE:
+        actionString = "Update"
+    else:
+        assert False, "PerformPackageImportOrUpdate(): invalid mode."
+
     # Get this out of the way early...
     #
     # Just to be clear: the rest of this function doesn't expect to handle
@@ -492,8 +504,7 @@ def PerformPackageImportOrUpdate(opts, args, checkinBranch=None):
 
     fileStatInfo = os.stat(filenameFullPath)
 
-    # TOOO: in update mode, make this Update
-    commitMesg = """Import %s version %s.
+    commitMesg = """%s %s version %s.
 
 %s
 File size: %s
@@ -509,7 +520,7 @@ Imported by %s, version %s
  os.path.basename(sys.argv[0]), VERSION)
 
     RunGitCmd(['commit', '-a', '-m', commitMesg], opts.git_repo,
-     "Git commit of import failed")
+     "Git commit of %s failed" % (actionString))
 
     tagName = "%s-%s" % (opts.package_name, opts.package_version)
     tagMesg = "Version %s of %s." % (opts.package_version, opts.package_name)
