@@ -22,8 +22,7 @@
 # handle more than .zip
 # Add to design doc that we're a workflow-assist tool; we never push to upstream,
 # so the worst you can ever do is ruin a local repo.
-# Don't tag if the add operation fails; but give users a way to tag things
-# anyway
+# Validate version of git (specifically, as of now, we need to check for merge --squash)
 
 from datetime import datetime
 import hashlib
@@ -364,7 +363,7 @@ def DoImport(opts, args):
     return DoTagImport(opts, args)
 
 
-def DoTagImport(opts, args):
+def DoImportTag(opts, args):
     if (opts.vendor_name is None or
      opts.package_version is None or
      opts.package_name is None):
@@ -446,6 +445,9 @@ def DoUpdatePart2(opts, args):
     RunGitCmd(['merge', '--ff-only', '--squash', updateBranch], opts.git_repo,
      "Failed to squash merge %s into %s" % (updateBranch, projectBranch))
 
+    # We set the editor to echo, because (for now) we don't munge the commit 
+    # message created automatically by git merge --squash. That message has
+    # some extraneous information, but for now, it's fine...
     os.environ['GIT_EDITOR'] = 'echo'
     RunGitCmd(['commit', '-a'], opts.git_repo,
      "Failed to commit update on branch %s" % (projectBranch))
@@ -644,7 +646,7 @@ You can publish the vendor branch with:
 # This must be defined after all the mode handler functions are defined.
 VALID_MODES = {
     'import': DoImport,
-    'tag-import': DoTagImport,
+    'tag-import': DoImportTag,
     'setup-vendor-tracking-branch': DoSetupVendorTrackingBranch,
     'update': DoUpdatePart1,
     'resume-update': DoUpdatePart2,
