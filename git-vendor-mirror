@@ -147,7 +147,9 @@ KNOWN_ARCHIVE_FORMATS = {
     'zip': UnzipFile,
 }
 
-def ClearGitRepo(repo):
+def ClearGitRepo(opts):
+    repo = opts.git_repo
+
     repoNeedsCommit = False
     for entry in os.listdir(repo):
         if os.path.isdir(entry):
@@ -290,7 +292,7 @@ def DoImport(opts, args):
     projectBranch = "%s-upstream" % (opts.package_name)
 
     GitCheckout(opts.git_repo, projectBranch, createBranch=True)
-    ClearGitRepo(opts.git_repo)
+    ClearGitRepo(opts)
 
     stripPath = int(opts.strip_path)
     explodeArchiveHandler(filenameFullPath, opts.git_repo, stripPath)
