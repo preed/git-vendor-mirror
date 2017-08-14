@@ -39,11 +39,19 @@ READ_CHUNK_SZ = 8192
 
 VERSION = '0.1.0'
 
+# Check environment for DEBUGging flag.
+DEBUG = os.getenv('DEBUG') is not None
+
 def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
  mixOutput=True):
 
     if gitCmdArgs is None:
-        raise ValueError("RunGitCmd: must provide git array of arguments.")
+        raise ValueError("RunGitCmd(): must provide git array of arguments.")
+
+    try:
+        fullGitCmd = [GIT_BIN] + gitCmdArgs
+    except TypeError:
+        raise ValueError("RunGitCmd(): must provide git array of arguments.")
 
     if exceptionContext is None:
         exceptionContext = "No context provided for this git exception."
@@ -53,8 +61,12 @@ def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
     else:
         stderrHandle = PIPE
 
-    gitCmd = Popen([GIT_BIN] + gitCmdArgs, cwd=gitDir, stdout=PIPE,
-     stderr=stderrHandle, universal_newlines=True)
+    if DEBUG:
+        print >> sys.stderr, "RunGitCmd() in %s: [%s]" % (gitDir,
+         ','.join(fullGitCmd))
+
+    gitCmd = Popen(fullGitCmd, cwd=gitDir, stdout=PIPE, stderr=stderrHandle,
+     universal_newlines=True)
     out, err = gitCmd.communicate()
 
     if gitCmd.returncode != 0:
