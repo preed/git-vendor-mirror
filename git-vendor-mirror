@@ -73,7 +73,10 @@ def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
         raise RuntimeError("%s: %s, %s, %s" % (exceptionContext,
          gitCmd.returncode, out, err))
 
-    return (out, err, gitCmd.returncode)
+    if mixOutput:
+        return (out, gitCmd.returncode)
+    else:
+        return (out, err, gitCmd.returncode)
 
 def GetFileHash(filename, hashType='sha1'):
     if hashType not in hashlib.algorithms:
@@ -161,7 +164,7 @@ def ClearGitRepo(opts):
         else:
             gitArgs = ['rm', entry]
 
-        out, err, rv = RunGitCmd(gitArgs, repo,
+        out, rv = RunGitCmd(gitArgs, repo,
          "Failed to clean up git repo prior to import for entry: %s" % (entry))
 
         repoNeedsCommit = True
@@ -194,7 +197,7 @@ def DownloadFile(url, localFile):
             urlHandle.close()
 
 def GetGitRepoBranchList(repo):
-    out, err, rv = RunGitCmd(['for-each-ref', '--format=%(refname:short)',
+    out, rv = RunGitCmd(['for-each-ref', '--format=%(refname:short)',
      'refs/heads/'], repo,
      "Obtaining git repo branch list failed")
 
@@ -215,7 +218,7 @@ def GitCheckout(repo, branch, createBranch=False):
 
 def ValidateGitRepo(repo):
     try:
-        out, err, rv = RunGitCmd(['status'], repo, "Invalid Git repo %s" %
+        out, rv = RunGitCmd(['status'], repo, "Invalid Git repo %s" %
          (repo))
     except RuntimeError, ex:
         raise ValueError(ex)
@@ -298,7 +301,7 @@ def DoImport(opts, args):
     explodeArchiveHandler(filenameFullPath, opts.git_repo, stripPath)
 
     RunGitCmd(['add', '.'], opts.git_repo, "Git add failed")
-    out, err, rv = RunGitCmd(['status', '--porcelain', '-z', '.'],
+    out, rv = RunGitCmd(['status', '--porcelain', '-z', '.'],
      opts.git_repo, "Git status during add validation failed")
 
     pendingAdds = []
