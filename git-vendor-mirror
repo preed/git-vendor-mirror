@@ -37,7 +37,7 @@ GIT_BIN = os.getenv('GIT', 'git')
 
 READ_CHUNK_SZ = 8192
 
-VERSION = '0.1.0'
+VERSION = '0.1.0+'
 
 # Check environment for DEBUGging flag.
 DEBUG = os.getenv('DEBUG') is not None
