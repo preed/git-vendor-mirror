@@ -351,10 +351,13 @@ File size: %s
 File mtime: %s
 File SHA1 checksum: %s
 File SHA256 checksum: %s
+
+Imported by %s, version %s
 """ % (opts.package_name, opts.package_version, fileProvenenceCommitInfo,
-fileStatInfo.st_size,
-datetime.fromtimestamp(fileStatInfo.st_mtime).strftime('%c'),
-GetFileHash(filenameFullPath), GetFileHash(filenameFullPath, 'sha256'))
+ fileStatInfo.st_size,
+ datetime.fromtimestamp(fileStatInfo.st_mtime).strftime('%c'),
+ GetFileHash(filenameFullPath), GetFileHash(filenameFullPath, 'sha256'),
+ os.path.basename(sys.argv[0]), VERSION)
 
     RunGitCmd(['commit', '-a', '-m', commitMesg], opts.git_repo,
      "Git commit of import failed")
