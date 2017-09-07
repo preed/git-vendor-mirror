@@ -185,12 +185,10 @@ def DownloadFile(url, localFile):
         with open(localFile, 'wb') as localFileHandle:
             localFileHandle.write(urlHandle.read())
 
-    except HTTPError, ex:
-        os.unlink(localFile)
+    except (HTTPError, URLError) as ex:
+        if os.path.exists(localFile):
+            os.unlink(localFile)
         raise ValueError("Error downloading %s: %s" % (url, ex))
-    except URLError, ex:
-        os.unlink(localFile)
-        raise ValueError("URL Error on %s: %s" % (url, ex))
     finally:
         if urlHandle is not None:
             urlHandle.close()
