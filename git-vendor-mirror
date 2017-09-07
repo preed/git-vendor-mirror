@@ -178,6 +178,7 @@ def ClearGitRepo(opts):
 
 def DownloadFile(url, localFile):
     # TODO: check SSL
+    urlHandle = None
     try:
         urlHandle = urlopen(url)
 
@@ -191,7 +192,8 @@ def DownloadFile(url, localFile):
         os.unlink(localFile)
         raise ValueError("URL Error on %s: %s" % (url, ex))
     finally:
-        urlHandle.close()
+        if urlHandle is not None:
+            urlHandle.close()
 
 def GetGitRepoBranchList(repo):
     out, err, rv = RunGitCmd(['for-each-ref', '--format=%(refname:short)',
