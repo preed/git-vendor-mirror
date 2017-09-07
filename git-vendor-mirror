@@ -113,7 +113,7 @@ def UnzipFile(zipfile, dest, stripPath=0):
                 memberDest = os.sep.join(pathParts)
                 memberDestFullPath = os.path.join(dest, memberDest)
 
-                memberInfo = zipfileHandle.getinfo(member)
+                memberInfo = zipfileHandle.getinfo(member.filename)
                 memberPerms = (memberInfo.external_attr >> 16L)
 
                 #print "%s -> %s" % (member.filename, memberDestFullPath)
