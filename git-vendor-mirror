@@ -111,7 +111,7 @@ def UntarFile(tarFile, dest, stripPath=0):
                 continue
 
             memberDest = os.sep.join(pathParts)
-            print >> sys.stderr, "memberDest: %s" % (memberDest)
+            # print >> sys.stderr, "memberDest: %s" % (memberDest)
             memberDestFullPath = os.path.join(dest, memberDest)
 
             if member.isfile():
