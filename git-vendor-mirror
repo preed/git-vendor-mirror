@@ -280,8 +280,12 @@ def DoImport(opts, args):
     else:
         assert False, "Unhandled import mode."
 
-    # Get the file extension, sans '.'
-    fileExtension = os.path.splitext(filename)[1][1:]
+    if opts.archive_format is not None:
+        fileExtension = opts.archive_format
+    else:
+        # Get the file extension, sans '.'
+        fileExtension = os.path.splitext(filename)[1][1:]
+
     try:
         explodeArchiveHandler = KNOWN_ARCHIVE_FORMATS[fileExtension]
     except KeyError:
@@ -472,6 +476,12 @@ def main(argv):
                  dest='strip_path', default=0,
                  help='The number of path elements to strip off the front from '
                       "archive files (reminiscent of patch's -p option).")
+
+    o.add_option('-a', '--archive-format',
+                 dest='archive_format', default=None,
+                 help='Override the archive format detection and use the '
+                  'specified format (available formats: %s)' %
+                  ', '.join(KNOWN_ARCHIVE_FORMATS.keys()))
 
     (options, args) = o.parse_args()
 
