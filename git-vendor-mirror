@@ -19,7 +19,6 @@
 #      altogether, even in the stripPath=0 case; extract doesn't do as
 #      much as I thought it did, so having two cases for that code is
 #      mostly-pointless.)
-# handle more than .zip
 # Add to design doc that we're a workflow-assist tool; we never push to upstream,
 # so the worst you can ever do is ruin a local repo.
 # Validate version of git (specifically, as of now, we need to check for merge --squash)
