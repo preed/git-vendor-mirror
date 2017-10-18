@@ -29,6 +29,7 @@ from socket import getfqdn
 import stat
 from subprocess import Popen, PIPE, STDOUT
 import sys
+from tarfile import TarFile, is_tarfile
 from tempfile import gettempdir
 from urllib2 import urlopen, URLError, HTTPError
 from zipfile import ZipFile
@@ -94,6 +95,45 @@ def GetFileHash(filename, hashType='sha1'):
 
     return hashObj.hexdigest()
 
+def UntarFile(tarFile, dest, stripPath=0):
+    print "Untarring %s to %s with stripPath %s" % (tarFile, dest, stripPath)
+
+    if not is_tarfile(tarFile):
+        raise ValueError("Invalid tarfile (.tar.gz/tar.bz2 currently "
+         "supported: %s" % (tarfile))
+
+    with TarFile.open(tarFile, 'r|*') as tarfileHandle:
+        tarFileMembers = tarfileHandle.getmembers()
+
+    with TarFile.open(tarFile, 'r|*') as tarfileHandle:
+        for member in tarFileMembers:
+            pathParts = os.path.normpath(member.name).split(os.sep)
+            pathParts = pathParts[stripPath:]
+
+            if len(pathParts) == 0:
+                continue
+
+            memberDest = os.sep.join(pathParts)
+            # print >> sys.stderr, "memberDest: %s" % (memberDest)
+            memberDestFullPath = os.path.join(dest, memberDest)
+
+            if member.isfile():
+                try:
+                    tarMemberHandle = tarfileHandle.extractfile(member)
+                    with open(memberDestFullPath, 'wb') as destFileHandle:
+                        destFileHandle.write(tarMemberHandle.read())
+                finally:
+                    tarMemberHandle.close()
+
+            elif member.isdir():
+                os.makedirs(memberDestFullPath)
+            else:
+                print >> sys.stderr, ("WARNING: other file types inside a "
+                "tarfile not currently supported: tar file member %s, type %s"
+                % (member.name, member.type))
+
+            os.chmod(memberDestFullPath, member.mode)
+
 def UnzipFile(zipfile, dest, stripPath=0):
     print "Unzipping %s to %s with stripPath %s" % (zipfile, dest, stripPath)
 
@@ -101,7 +141,7 @@ def UnzipFile(zipfile, dest, stripPath=0):
     umask = os.umask(0)
     os.umask(umask)
 
-    with ZipFile(zipfile, 'r') as zipfileHandle:
+    with ZipFile(zipfile, 'rb') as zipfileHandle:
         # We do this manually instead of using extractall() because extract()
         # sanitizes absolute and '..'-containing paths in a reasonable way, so
         # we don't have to.
@@ -148,6 +188,8 @@ def UnzipFile(zipfile, dest, stripPath=0):
 
 KNOWN_ARCHIVE_FORMATS = {
     'zip': UnzipFile,
+    'gz': UntarFile,
+    'bz2': UntarFile,
 }
 
 def ClearGitRepo(opts):
