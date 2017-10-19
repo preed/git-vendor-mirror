@@ -263,8 +263,8 @@ def ClearGitRepo(opts):
             print l
 
     if repoNeedsCommit:
-        commitMesg = ("Cleaning Git repository in preparation for update of %s "
-         "version %s" % (opts.package_name, opts.package_version))
+        commitMesg = ("Cleaning Git repository in preparation for update to %s,"
+         " version %s" % (opts.package_name, opts.package_version))
 
         RunGitCmd(['commit', '-a', '-m', commitMesg], repo
          "Git commit of clean repo failed")
