@@ -1,7 +1,7 @@
 
 # Intro
 
-`git-vendor-mirror` is a tool with strong, release engineering-informed opinions on managing third-party source code, your software supply chain. It integrates with the software you're building. See [DESIGN.md](https://github.com/preed/git-vendor-mirror/blob/master/DESIGN.md) for more details on its history, its purpose, its design goals, and its design non-goals.
+`git-vendor-mirror` is a tool with strong, release engineering-informed opinions on managing third-party source code, your software supply chain. It integrates with the software you're building. See [DESIGN.md](https://github.com/preed/git-vendor-mirror/blob/master/DESIGN.md) for more details on its history, its purpose, its design goals, and its design non-goals. See [WORKFLOW.md]((https://github.com/preed/git-vendor-mirror/blob/master/WORKFLOW.md) for a description of what `git-vendor-mirror` is actually doing under the hood.
 
 `git-vendor-mirror` basically provides a way to "fork" GitHub (and non-GitHub!) repositories without actually employing the Git-concept of a fork. In effect, it's a tool to manage leveraging Git and Git-concepts to replicate the behavior of CVS's "vendor branch" pattern.
 
