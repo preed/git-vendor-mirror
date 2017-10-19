@@ -12,7 +12,6 @@
 # Check python 2.7
 # Validate SSL?
 # cleanup tmpfiles
-# helper functions for branch names
 # option to fetch/expand submodules
 #   Coalesce the umask/chmod() code in UnzipFile(), which is cut/paste
 #     (In fact, that code should be refactored to remove use of extract()
@@ -240,6 +239,9 @@ KNOWN_ARCHIVE_FORMATS = {
     'bz2': UntarFile,
 }
 
+def GetProjectUpdateBranchName(projectName, newVersion):
+    return "%s-update-v%s" % (projectBranch, newVersion)
+
 def GetProjectBranchName(projectName):
     return "%s-upstream" % (projectName)
 
@@ -404,7 +406,8 @@ def DoUpdatePart1(opts, args):
          'or package directory (-d) must be specified in update mode.')
 
     projectBranch = GetProjectBranchName(opts.package_name)
-    updateBranch = "%s-update-v%s" % (projectBranch, opts.package_version)
+    updateBranch = GetProjectUpdateBranchName(projectBranch,
+     opts.package_version)
 
     if updateBranch in GetGitRepoBranchList(opts.git_repo):
         raise ValueError("Upstream project tracking branch already exists for "
@@ -438,7 +441,8 @@ def DoUpdatePart2(opts, args):
          'version (-v) are required in update mode.')
 
     projectBranch = GetProjectBranchName(opts.package_name)
-    updateBranch = "%s-update-v%s" % (projectBranch, opts.package_version)
+    updateBranch = GetProjectUpdateBranchName(projectBranch,
+     opts.package_version)
 
     GitCheckout(opts.git_repo, projectBranch)
 
@@ -536,7 +540,7 @@ def PerformPackageImportOrUpdate(opts, args, mode=None, checkinBranch=None):
     else:
         assert False, "Unhandled import mode."
 
-    projectBranch = "%s-upstream" % (opts.package_name)
+    projectBranch = GetProjectBranchName(opts.package_name)
 
     if checkinBranch is None:
         checkinBranch = projectBranch
