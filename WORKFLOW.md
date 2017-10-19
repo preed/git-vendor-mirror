@@ -28,7 +28,7 @@ Import mode effectively performs the equivalent of:
 | Validate the files were added correctly | <details>A surprising number of projects ship files in their source archives that have been `.gitignored`; this code validates that all files in the tarball were added, and _warns_ the user if that is not the case.</details> |
 | `git commit -m "Import libunicorn, version 1.0.0"` | <details>Commit the source code, using a standard message with details of where the source came from.</details> |
 | `git tag libunicorn-1.0.0` | <details>Create a tag to easily identify this specific version of the upstream, pristine source code.</details> |
-| `git push --tags origin libunicorn-upstream` | <details>Publish the branch and tag to everyone else. **NOTE**: `git-vendor-mirror` does _not_ automatically do this step; it informs the user that they need to do this step themselves, and provides the correct commands to type.</details> |
+| `git push --tags origin libunicorn-upstream` | <details>Publish the branch and tag to everyone else. **NOTE**: `git-vendor-mirror` does _not_ automatically perform this step; it informs the user that they need to perform this step themselves, and provides the correct commands to type.</details> |
 
 ## resume-import Mode
 
@@ -77,7 +77,7 @@ In many ways, it is similar to `import` mode (in fact, some of the code is share
 | `git commit -a` | <details>Commit the squashed/merged branch to the `libunicorn-upstream` branch.</details> |
 | `git tag libunicorn-2.0.0` | <details>Create a tag to easily identify this specific version of the upstream, pristine source code.</details> |
 | `git branch -D libunicorn-v2.0.0-update` | <details>Delete the (now merged, and therefore useless) update branch.</details> |
-| `git push --tags origin libunicorn-upstream` | **NOTE**: `git-vendor-mirror` does _not_ automatically do this step. <details>Publish the branch and tag to everyone else.</details> **NOTE**: `git-vendor-mirror` does _not_ automatically do this step; it informs the user that they need to do this step themselves, and provides the correct commands to type. |
+| `git push --tags origin libunicorn-upstream` | **NOTE**: `git-vendor-mirror` does _not_ automatically do this step. <details>Publish the branch and tag to everyone else. **NOTE**: `git-vendor-mirror` does _not_ automatically do this step; it informs the user that they need to do this step themselves, and provides the correct commands to type.</details> |
 
 Note that this mode can fail in the same way an `import` can fail, namely because missing added files are found or the user wants to otherwise modify/`--amend` the Git commit (as you can in `import` mode). In this case, the update process is left in a "halfway completed" state and the user is prompted to use the `resume-update` mode to complete the update.
 
