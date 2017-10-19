@@ -271,7 +271,7 @@ def ClearGitRepo(opts):
         commitMesg = ("Cleaning Git repository in preparation for update to %s,"
          " version %s" % (opts.package_name, opts.package_version))
 
-        RunGitCmd(['commit', '-a', '-m', commitMesg], repo
+        RunGitCmd(['commit', '-a', '-m', commitMesg], repo,
          "Git commit of clean repo failed")
 
 def DownloadFile(url, localFile):
