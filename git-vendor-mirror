@@ -239,7 +239,7 @@ KNOWN_ARCHIVE_FORMATS = {
     'bz2': UntarFile,
 }
 
-def GetProjectUpdateBranchName(projectName, newVersion):
+def GetProjectUpdateBranchName(projectBranch, newVersion):
     return "%s-update-v%s" % (projectBranch, newVersion)
 
 def GetProjectBranchName(projectName):
