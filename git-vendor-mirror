@@ -363,6 +363,15 @@ def DoImport(opts, args):
          checkinBranch=projectBranch)
     except MissingAddsException, ex:
         ex.PrintStandardWarning()
+        print >> sys.stderr, """
+
+WARNING: the git-vendor-mirror import process HAS NOT COMPLETED.
+
+To finish it, ensure the above commit looks like you want it to look (using
+"git commit --amend" manually, if necessary), and then run:
+
+%s resume-import -V %s -n %s -v %s
+"""
         return
 
     return DoImportTag(opts, args)
@@ -658,7 +667,7 @@ You can publish the vendor branch with:
 # This must be defined after all the mode handler functions are defined.
 VALID_MODES = {
     'import': DoImport,
-    'tag-import': DoImportTag,
+    'resume-import': DoImportTag,
     'setup-vendor-tracking-branch': DoSetupVendorTrackingBranch,
     'update': DoUpdatePart1,
     'resume-update': DoUpdatePart2,
