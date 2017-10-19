@@ -151,7 +151,8 @@ def UntarFile(tarFile, dest, stripPath=0):
                 continue
 
             memberDest = os.sep.join(pathParts)
-            print >> sys.stderr, "memberDest: %s" % (memberDest)
+            if DEBUG:
+                print >> sys.stderr, "tar memberDest: %s" % (memberDest)
             memberDestFullPath = os.path.join(dest, memberDest)
 
             if member.isfile():
@@ -204,8 +205,9 @@ def UnzipFile(zipfile, dest, stripPath=0):
                 memberInfo = zipfileHandle.getinfo(member.filename)
                 memberPerms = (memberInfo.external_attr >> 16L)
 
-                #print >> sys.stderr, "%s -> %s" % (
-                # member.filename, memberDestFullPath)
+                if DEBUG:
+                    print >> sys.stderr, "%s -> %s" % (member.filename,
+                     memberDestFullPath)
                 if member.filename.endswith('/'):
                     os.makedirs(memberDestFullPath)
                 else:
@@ -259,8 +261,9 @@ def ClearGitRepo(opts):
 
         repoNeedsCommit = True
 
-        for l in out.split('\n'):
-            print l
+        if DEBUG:
+            for l in out.split('\n'):
+                print >> sys.stderr, "Removing %s" % (l)
 
     if repoNeedsCommit:
         commitMesg = ("Cleaning Git repository in preparation for update to %s,"
@@ -319,7 +322,8 @@ def ValidateGitRepo(repo):
         match = re.match('^On branch (.+)', line)
         if match is not None:
             foundBranch = True
-            #print "Branch line found: %s." % (match.group(1))
+            if DEBUG:
+                print "Branch line found: %s." % (match.group(1))
         firstCommit = re.match('^Initial commit$', line)
         repoClean = re.match('^nothing to commit, working directory clean$',
          line)
@@ -543,7 +547,6 @@ def PerformPackageImportOrUpdate(opts, args, mode=None, checkinBranch=None):
     stripPath = int(opts.strip_path)
     explodeArchiveHandler(filenameFullPath, opts.git_repo, stripPath)
 
-    print "Got to add"
     RunGitCmd(['add', '.'], opts.git_repo, "Git add failed")
     out, rv = RunGitCmd(['status', '--porcelain', '-z', '.'],
      opts.git_repo, "Git status during add validation failed")
@@ -552,8 +555,9 @@ def PerformPackageImportOrUpdate(opts, args, mode=None, checkinBranch=None):
     for statusEntry in out.split('\0')[:-1]:
         pendingAdds.append(statusEntry[3:])
 
-    #for p in pendingAdds:
-    #    print p
+    if DEBUG:
+        for p in pendingAdds:
+            print >> sys.stderr, p
 
     missedAdds = []
     gitRepoPath = os.path.abspath(opts.git_repo)
