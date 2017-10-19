@@ -19,6 +19,9 @@
 #      altogether, even in the stripPath=0 case; extract doesn't do as
 #      much as I thought it did, so having two cases for that code is
 #      mostly-pointless.)
+# Add to design doc that we're a workflow-assist tool; we never push to upstream,
+# so the worst you can ever do is ruin a local repo.
+# Validate version of git (specifically, as of now, we need to check for merge --squash)
 
 from datetime import datetime
 import hashlib
@@ -36,12 +39,42 @@ from zipfile import ZipFile
 
 GIT_BIN = os.getenv('GIT', 'git')
 
+# Constants
 READ_CHUNK_SZ = 8192
+
+MODE_IMPORT = 0
+MODE_UPDATE = 1
 
 VERSION = '0.1.0+'
 
 # Check environment for DEBUGging flag.
 DEBUG = os.getenv('DEBUG') is not None
+
+# Custom Exceptions
+class MissingAddsException(ValueError):
+    missingAdds = []
+    def __init__(self, missingAddedFiles):
+        super.__init__(self)
+        self.missingAdds = missingAddedFiles
+
+    def PrintStandardWarning(self):
+        print >> sys.stderr, """
+=============================================
+WARNING: the following directory entries were not added during the 'git add'
+operation:
+
+%s
+
+This usually occurs because of an entry in .gitignore that matches a
+source file. (This usually happens a .gitignore entry was added after the
+source file in question was added or due to unit test data.)
+
+To correct this, 'git add -f' the above files and then append them to the
+existing git commit with 'git commit --amend'
+=============================================
+
+""" % ("\n".join(self.missingAdds))
+
 
 def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
  mixOutput=True):
@@ -71,7 +104,7 @@ def RunGitCmd(gitCmdArgs=None, gitDir=os.getcwd(), exceptionContext=None,
     out, err = gitCmd.communicate()
 
     if gitCmd.returncode != 0:
-        raise RuntimeError("%s: %s, %s, %s" % (exceptionContext,
+        raise RuntimeError("%s, %s\nstdout: %s\nstderr: %s" % (exceptionContext,
          gitCmd.returncode, out, err))
 
     if mixOutput:
@@ -171,7 +204,8 @@ def UnzipFile(zipfile, dest, stripPath=0):
                 memberInfo = zipfileHandle.getinfo(member.filename)
                 memberPerms = (memberInfo.external_attr >> 16L)
 
-                #print "%s -> %s" % (member.filename, memberDestFullPath)
+                #print >> sys.stderr, "%s -> %s" % (
+                # member.filename, memberDestFullPath)
                 if member.filename.endswith('/'):
                     os.makedirs(memberDestFullPath)
                 else:
@@ -204,9 +238,11 @@ KNOWN_ARCHIVE_FORMATS = {
     'bz2': UntarFile,
 }
 
+def GetProjectBranchName(projectName):
+    return "%s-upstream" % (projectName)
+
 def ClearGitRepo(opts):
     repo = opts.git_repo
-
     repoNeedsCommit = False
     for entry in os.listdir(repo):
         if os.path.isdir(entry):
@@ -227,11 +263,11 @@ def ClearGitRepo(opts):
             print l
 
     if repoNeedsCommit:
-        commitMesg = ("Cleaning Git repository in preparation for import of %s "
-         "version %s" % (opts.package_name, opts.package_version))
+        commitMesg = ("Cleaning Git repository in preparation for update to %s,"
+         " version %s" % (opts.package_name, opts.package_version))
 
-        RunGitCmd(['commit', '-a', '-m', commitMesg],
-         repo, "Git commit of clean repo failed")
+        RunGitCmd(['commit', '-a', '-m', commitMesg], repo
+         "Git commit of clean repo failed")
 
 def DownloadFile(url, localFile):
     # TODO: check SSL
@@ -305,7 +341,148 @@ def DoImport(opts, args):
             opts.package_file is None and
             opts.package_dir is None):
         raise ValueError('One of a package URL (-u), a package file name (-f), '
-         'or package directory (-d)    must be specified in import mode.')
+         'or package directory (-d) must be specified in import mode.')
+
+    projectBranch = GetProjectBranchName(opts.package_name)
+
+    if projectBranch in GetGitRepoBranchList(opts.git_repo):
+        raise ValueError("Upstream project tracking branch already "
+         "exists: %s. (Did you mean to use 'update' mode?)" % (projectBranch))
+
+    # If this branch exists, fail... "Did you mean import?"
+    GitCheckout(opts.git_repo, projectBranch, createBranch=True)
+
+    try:
+        PerformPackageImportOrUpdate(opts, args, MODE_IMPORT,
+         checkinBranch=projectBranch)
+    except MissingAddsException, ex:
+        ex.PrintStandardWarning()
+        return
+
+    return DoImportTag(opts, args)
+
+
+def DoImportTag(opts, args):
+    if (opts.vendor_name is None or
+     opts.package_version is None or
+     opts.package_name is None):
+        raise ValueError('Vendor name (-V), package name (-n), and package '
+         'version (-v) are required in import mode.')
+
+    projectBranch = GetProjectBranchName(opts.package_name)
+
+    tagName = "%s-%s" % (opts.package_name, opts.package_version)
+    tagMesg = "Version %s of %s." % (opts.package_version, opts.package_name)
+
+    RunGitCmd(['tag', '-a', '-m', tagMesg, tagName], opts.git_repo,
+     "Git tag of package import failed")
+
+    print """Validate the %s version %s import looks the way you expect with Git log.
+
+After you are satisfied, publish the %s version %s import with:
+
+        git push --tags origin %s
+""" % (opts.package_name, opts.package_version, opts.package_name,
+ opts.package_version, projectBranch)
+
+
+def DoUpdatePart1(opts, args):
+    if (opts.vendor_name is None or
+     opts.package_version is None or
+     opts.package_name is None):
+        raise ValueError('Vendor name (-V), package name (-n), and package '
+         'version (-v) are required in update mode.')
+
+    if (opts.package_url is None and
+     opts.package_file is None and
+     opts.package_dir is None):
+        raise ValueError('One of a package URL (-u), a package file name (-f), '
+         'or package directory (-d) must be specified in update mode.')
+
+    projectBranch = GetProjectBranchName(opts.package_name)
+    updateBranch = "%s-update-v%s" % (projectBranch, opts.package_version)
+
+    if updateBranch in GetGitRepoBranchList(opts.git_repo):
+        raise ValueError("Upstream project tracking branch already exists for "
+         "version %s: %s. (Unfinished update?)" % (updateBranch, projectBranch))
+
+    try:
+        PerformPackageImportOrUpdate(opts, args, MODE_UPDATE,
+         checkinBranch=updateBranch)
+    except MissingAddsException, ex:
+        ex.PrintStandardWarning()
+
+        print >> sys.stderr, """
+
+WARNING: the git-vendor-mirror update process HAS NOT COMPLETED.
+
+To finish it, ensure the above commit looks like you want it to look (using
+"git commit --amend" manually, if necessary), and then run:
+
+%s resume-update -V %s -n %s -v %s
+""" % (sys.argv[0], opts.vendor_name, opts.package_name, opts.package_version)
+
+        return
+
+    return DoUpdatePart2(opts, args)
+
+def DoUpdatePart2(opts, args):
+    if (opts.vendor_name is None or
+     opts.package_version is None or
+     opts.package_name is None):
+        raise ValueError('Vendor name (-V), package name (-n), and package '
+         'version (-v) are required in update mode.')
+
+    projectBranch = GetProjectBranchName(opts.package_name)
+    updateBranch = "%s-update-v%s" % (projectBranch, opts.package_version)
+
+    GitCheckout(opts.git_repo, projectBranch)
+
+    RunGitCmd(['merge', '--ff-only', '--squash', updateBranch], opts.git_repo,
+     "Failed to squash merge %s into %s" % (updateBranch, projectBranch))
+
+    # We set the editor to echo, because (for now) we don't munge the commit 
+    # message created automatically by git merge --squash. That message has
+    # some extraneous information, but for now, it's fine...
+    os.environ['GIT_EDITOR'] = 'echo'
+    RunGitCmd(['commit', '-a'], opts.git_repo,
+     "Failed to commit update on branch %s" % (projectBranch))
+    del os.environ['GIT_EDITOR']
+
+    tagName = "%s-%s" % (opts.package_name, opts.package_version)
+    tagMesg = "Version %s of %s." % (opts.package_version, opts.package_name)
+
+    RunGitCmd(['tag', '-a', '-m', tagMesg, tagName], opts.git_repo,
+     "Git tag of package update failed")
+
+    RunGitCmd(['branch', '-D', updateBranch], opts.git_repo,
+     "Failed to delete update branch %s" % (updateBranch))
+
+    print """Validate the %s version %s update looks the way you expect with Git log and/or gitk.
+
+After you are satisfied, publish the %s version %s import with:
+
+        git push --tags origin %s
+""" % (opts.package_name, opts.package_version, opts.package_name,
+    opts.package_version, projectBranch)
+
+# This was refactored out because the main difference between package import
+# and update logic is which branch this occurs on. The update code also does
+# some additional steps after the import.
+#
+# In the import case, we check directly in to $project-upstream branch; in
+# the update case, we create a working branch off of that.
+#
+# That's what the checkinBranch argument accounts for.
+
+def PerformPackageImportOrUpdate(opts, args, mode=None, checkinBranch=None):
+    # Validate given mode
+    if mode == MODE_IMPORT:
+        actionString = "Import"
+    elif mode == MODE_UPDATE:
+        actionString = "Update"
+    else:
+        assert False, "PerformPackageImportOrUpdate(): invalid mode."
 
     # Get this out of the way early...
     #
@@ -315,27 +492,16 @@ def DoImport(opts, args):
     if opts.package_dir:
         raise NotImplementedError('--package-dir unimplemented.')
 
+    if opts.package_url:
+        filename = os.path.basename(opts.package_url)
+    elif opts.package_file:
+        filename = os.path.basename(opts.package_file)
+    else:
+        assert False, "Unhandled import mode."
+
     # First, make sure we're dealing with a file we know how to deal with; this
     # is only needed in URL and file modes
     explodeArchiveHandler = None
-
-    if opts.package_url:
-        filename = os.path.basename(opts.package_url)
-        filenameFullPath = os.path.join(gettempdir(), filename)
-        fileProvenenceCommitInfo = "Downloaded from: %s" % (opts.package_url)
-
-        DownloadFile(opts.package_url, filenameFullPath)
-    elif opts.package_file:
-        filename = os.path.basename(opts.package_file)
-        filenameFullPath = os.path.abspath(opts.package_file)
-        fileProvenenceCommitInfo = ("Original filename: %s\n"
-         "Source machine hostname: %s" % (filenameFullPath, getfqdn()))
-
-        if not os.path.isfile(filenameFullPath):
-            raise ValueError("Specified package file missing or not a file: %s" %
-             (filenameFullPath))
-    else:
-        assert False, "Unhandled import mode."
 
     if opts.archive_format is not None:
         fileExtension = opts.archive_format
@@ -350,14 +516,34 @@ def DoImport(opts, args):
          "available archive formats: %s" % (fileExtension,
          ', '.join(KNOWN_ARCHIVE_FORMATS.keys())))
 
+    if opts.package_url:
+        filenameFullPath = os.path.join(gettempdir(), filename)
+        fileProvenenceCommitInfo = "Downloaded from: %s" % (opts.package_url)
+
+        DownloadFile(opts.package_url, filenameFullPath)
+    elif opts.package_file:
+        filenameFullPath = os.path.abspath(opts.package_file)
+        fileProvenenceCommitInfo = ("Original filename: %s\n"
+         "Source machine hostname: %s" % (filenameFullPath, getfqdn()))
+
+        if not os.path.isfile(filenameFullPath):
+            raise ValueError("Specified package file missing or not a file: %s" %
+             (filenameFullPath))
+    else:
+        assert False, "Unhandled import mode."
+
     projectBranch = "%s-upstream" % (opts.package_name)
 
-    GitCheckout(opts.git_repo, projectBranch, createBranch=True)
+    if checkinBranch is None:
+        checkinBranch = projectBranch
+
+    GitCheckout(opts.git_repo, checkinBranch, createBranch=True)
     ClearGitRepo(opts)
 
     stripPath = int(opts.strip_path)
     explodeArchiveHandler(filenameFullPath, opts.git_repo, stripPath)
 
+    print "Got to add"
     RunGitCmd(['add', '.'], opts.git_repo, "Git add failed")
     out, rv = RunGitCmd(['status', '--porcelain', '-z', '.'],
      opts.git_repo, "Git status during add validation failed")
@@ -405,7 +591,7 @@ def DoImport(opts, args):
 
     fileStatInfo = os.stat(filenameFullPath)
 
-    commitMesg = """Import %s version %s.
+    commitMesg = """%s %s, version %s.
 
 %s
 File size: %s
@@ -414,49 +600,22 @@ File SHA1 checksum: %s
 File SHA256 checksum: %s
 
 Imported by %s, version %s
-""" % (opts.package_name, opts.package_version, fileProvenenceCommitInfo,
- fileStatInfo.st_size,
- datetime.fromtimestamp(fileStatInfo.st_mtime).strftime('%c'),
- GetFileHash(filenameFullPath), GetFileHash(filenameFullPath, 'sha256'),
- os.path.basename(sys.argv[0]), VERSION)
+""" % (actionString,
+       opts.package_name,
+       opts.package_version,
+       fileProvenenceCommitInfo,
+       fileStatInfo.st_size,
+       datetime.fromtimestamp(fileStatInfo.st_mtime).strftime('%c'),
+       GetFileHash(filenameFullPath),
+       GetFileHash(filenameFullPath, 'sha256'),
+       os.path.basename(sys.argv[0]),
+       VERSION)
 
     RunGitCmd(['commit', '-a', '-m', commitMesg], opts.git_repo,
-     "Git commit of import failed")
+     "Git commit of %s failed" % (actionString))
 
-    tagName = "%s-%s" % (opts.package_name, opts.package_version)
-    tagMesg = "Version %s of %s." % (opts.package_version, opts.package_name)
-
-    RunGitCmd(['tag', '-a', '-m', tagMesg, tagName], opts.git_repo,
-     "Git tag of import failed")
-
-    missedAddsWarningStr = ""
     if len(missedAdds) > 0:
-        missedAddsWarningStr = """
-
-=============================================
-WARNING: the following directory entries were not added during the 'git add'
-operation:
-
-%s
-
-This usually occurs because of an entry in .gitignore that matches a
-source file. (This usually happens a .gitignore entry was added after the
-source file in question was added or due to unit test data.)
-
-To correct this, 'git add -f' the above files and then append them to the
-existing git commit with 'git commit --amend'
-=============================================
-
-""" % ("\n".join(missedAdds))
-
-
-    print """Validate the %s version %s import looks the way you expect with Git log.
-%s
-After you are satisfied, publish the %s version %s import with:
-
-        git push --tags origin %s
-""" % (opts.package_name, opts.package_version, missedAddsWarningStr,
-opts.package_name, opts.package_version, projectBranch)
+        raise MissingAddsException(missedAdds)
 
 def DoSetupVendorTrackingBranch(opts, args):
     if (opts.vendor_name is None or
@@ -469,7 +628,7 @@ def DoSetupVendorTrackingBranch(opts, args):
         raise ValueError("Vendor Tracking Branch %s already exists" %
          (vendorBranch))
 
-    upstreamBranch = "%s-upstream" % (opts.package_name)
+    upstreamBranch = GetProjectBranchName(opts.package_name)
     try:
         GitCheckout(opts.git_repo, upstreamBranch)
     except ValueError, ex:
@@ -491,7 +650,10 @@ You can publish the vendor branch with:
 # This must be defined after all the mode handler functions are defined.
 VALID_MODES = {
     'import': DoImport,
+    'tag-import': DoImportTag,
     'setup-vendor-tracking-branch': DoSetupVendorTrackingBranch,
+    'update': DoUpdatePart1,
+    'resume-update': DoUpdatePart2,
 }
 
 def main(argv):
@@ -519,7 +681,7 @@ def main(argv):
                  dest='git_repo', default=os.getcwd(),
                  help='Directory name of the git repo to use; default: cwd')
 
-    # Import mode; one of...
+    # Import and update modes; one of...
     o.add_option('-u', '--package-url',
                  dest='package_url', default=None,
                  help='The URL to download the package.')
