@@ -406,9 +406,6 @@ def DoUpdatePart1(opts, args):
         raise ValueError("Upstream project tracking branch already exists for "
          "version %s: %s. (Unfinished update?)" % (updateBranch, projectBranch))
 
-    GitCheckout(opts.git_repo, updateBranch, createBranch=True)
-    ClearGitRepo(opts)
-
     try:
         PerformPackageImportOrUpdate(opts, args, MODE_UPDATE,
          checkinBranch=updateBranch)
@@ -537,7 +534,10 @@ def PerformPackageImportOrUpdate(opts, args, mode=None, checkinBranch=None):
 
     projectBranch = "%s-upstream" % (opts.package_name)
 
-    GitCheckout(opts.git_repo, projectBranch, createBranch=True)
+    if checkinBranch is None:
+        checkinBranch = projectBranch
+
+    GitCheckout(opts.git_repo, checkinBranch, createBranch=True)
     ClearGitRepo(opts)
 
     stripPath = int(opts.strip_path)
