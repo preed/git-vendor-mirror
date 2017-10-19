@@ -98,6 +98,10 @@ def GetFileHash(filename, hashType='sha1'):
 def UntarFile(tarFile, dest, stripPath=0):
     print "Untarring %s to %s with stripPath %s" % (tarFile, dest, stripPath)
 
+    # Get (and reset) the currrent umask
+    umask = os.umask(0)
+    os.umask(umask)
+
     if not is_tarfile(tarFile):
         raise ValueError("Invalid tarfile (.tar.gz/tar.bz2 currently "
          "supported: %s" % (tarfile))
@@ -114,10 +118,18 @@ def UntarFile(tarFile, dest, stripPath=0):
                 continue
 
             memberDest = os.sep.join(pathParts)
-            # print >> sys.stderr, "memberDest: %s" % (memberDest)
+            print >> sys.stderr, "memberDest: %s" % (memberDest)
             memberDestFullPath = os.path.join(dest, memberDest)
 
             if member.isfile():
+                fileDir = os.path.dirname(memberDestFullPath)
+
+                if not os.path.exists(fileDir):
+                    os.makedirs(fileDir)
+
+                    os.chmod(fileDir, os.stat(fileDir).st_mode |
+                     ((stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH ) & ~umask))
+
                 try:
                     tarMemberHandle = tarfileHandle.extractfile(member)
                     with open(memberDestFullPath, 'wb') as destFileHandle:
