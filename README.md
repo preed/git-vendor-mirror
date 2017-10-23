@@ -106,6 +106,8 @@ The script will give you further instructions on what to do when it runs, but ge
 git push origin acme-master
 ```
 
+As a design consideration, `git-vendor-mirror` will never push to remote repositories, so you can _always_ inspect its work. But it provides the precise commands to run to publish the work its done for you (under your commit ID), so you're always in control, but when you've validated things, you can run the provided command and get on with your life.
+
 6. Reset the default branch (optional):
 
 Since you want all internal/private patches/development to occur on the `acme-master` branch (*not* `master`), it is often a good idea to reset the default branch that Git checks out for users upon a `clone` to this branch. Instructions to accomplish this for all the various Git repository management tools is beyond the scope of this document. But on Github, you can go to the following repository URL and change the default branch:

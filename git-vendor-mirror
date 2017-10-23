@@ -7,20 +7,9 @@
 # Licensed under the MIT license; see the LICENSE file for more information.
 #
 #
+# TODOs:
+#   See https://github.com/preed/git-vendor-mirror/issues/
 #
-# TODO:
-# Check python 2.7
-# Validate SSL?
-# cleanup tmpfiles
-# option to fetch/expand submodules
-#   Coalesce the umask/chmod() code in UnzipFile(), which is cut/paste
-#     (In fact, that code should be refactored to remove use of extract()
-#      altogether, even in the stripPath=0 case; extract doesn't do as
-#      much as I thought it did, so having two cases for that code is
-#      mostly-pointless.)
-# Add to design doc that we're a workflow-assist tool; we never push to upstream,
-# so the worst you can ever do is ruin a local repo.
-# Validate version of git (specifically, as of now, we need to check for merge --squash)
 
 from datetime import datetime
 import hashlib
