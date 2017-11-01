@@ -57,8 +57,8 @@ This usually occurs because of an entry in .gitignore that matches a
 source file. (This usually happens a .gitignore entry was added after the
 source file in question was added or due to unit test data.)
 
-To correct this, 'git add -f' the above files and then append them to the
-existing git commit with 'git commit --amend'
+To correct this specific case, use 'git add -f' to add the above files and
+then append them to the existing git commit with 'git commit --amend'
 =============================================
 
 """ % ("\n".join(self.missingAdds))
