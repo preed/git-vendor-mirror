@@ -42,7 +42,7 @@ DEBUG = os.getenv('DEBUG') is not None
 class MissingAddsException(ValueError):
     missingAdds = []
     def __init__(self, missingAddedFiles):
-        super.__init__(self)
+        super(MissingAddsException, self).__init__()
         self.missingAdds = missingAddedFiles
 
     def PrintStandardWarning(self):
