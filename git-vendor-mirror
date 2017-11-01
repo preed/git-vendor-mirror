@@ -360,7 +360,8 @@ To finish it, ensure the above commit looks like you want it to look (using
 "git commit --amend" manually, if necessary), and then run:
 
 %s resume-import -V %s -n %s -v %s
-"""
+""" % (sys.argv[0], opts.vendor_name, opts.package_name, opts.package_version)
+
         return
 
     return DoImportTag(opts, args)
