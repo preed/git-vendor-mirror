@@ -283,9 +283,27 @@ def DownloadFile(url, localFile):
 def GetGitRepoBranchList(repo):
     out, rv = RunGitCmd(['for-each-ref', '--format=%(refname:short)',
      'refs/heads/'], repo,
-     "Obtaining git repo branch list failed")
+     "Obtaining git repo local branch list failed")
 
-    return out.split('\n')
+    allBranches = out.split('\n')
+
+    out, rv = RunGitCmd(['for-each-ref', '--format=%(refname:short)',
+     'refs/remotes/'], repo,
+     "Obtaining git repo remote branch list failed")
+
+    for branch in out.split('\n'):
+        # Strip off the remote name (usually origin, but potentially
+        # something else...)
+        branch = re.sub('^.+/', '', branch)
+        # Don't include HEAD in the branch list
+        if branch == 'HEAD':
+            continue
+
+        # And only add the branch if it's not already in the list.
+        if branch not in allBranches:
+            allBranches.append(branch)
+
+    return allBranches
 
 def GitCheckout(repo, branch, createBranch=False):
     if branch in GetGitRepoBranchList(repo):
