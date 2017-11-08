@@ -175,7 +175,7 @@ def UnzipFile(zipfile, dest, stripPath=0):
     umask = os.umask(0)
     os.umask(umask)
 
-    with ZipFile(zipfile, 'rb') as zipfileHandle:
+    with ZipFile(zipfile, 'r') as zipfileHandle:
         # We do this manually instead of using extractall() because extract()
         # sanitizes absolute and '..'-containing paths in a reasonable way, so
         # we don't have to.
