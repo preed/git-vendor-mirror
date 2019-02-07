@@ -13,7 +13,7 @@ Importing source code using `git-vendor-mirror` is a fairly simple process, invo
 
 You will see reference to the concept of a "vendor-name"; that's a small string that describes your organization. (Examples: "moz" if your organization were Mozilla.) Technically, there are no limits on the length of this string, but we recommend a string of 2-4 characters. (The string gets used in tag names and such, so shorter helps.)
 
-## Importing source code
+## Importing Source Code
 
 The first step to importing source code is to create an empty Git(Hub) repository; specific instructions for doing this are beyond the scope of this document.
 
@@ -75,6 +75,18 @@ Putting all these together, the command to run the import would look like the fo
 
 When the import process described in step 3 is completed, `git-vendor-mirror` will prompt you to use `git log` or `gitk` to inspect the work it has done. You can correct any problems (such as adding to the commit message, etc.) using `git commit --amend`.
 
+**IF YOU RUN INTO THIS SITUATION**, you will need to finalize the import yourself before moving onto the next step; this can be done with `resume-import`:
+
+```
+[you@machine workdir]$ ~/path-to/git-vendor-mirror/git-vendor-mirror \
+      resume-import \
+      -V acme \
+      -n rapidjson \
+      -v 1.1.0 \
+```
+
+This is not necessary if `git-vendor-mirror` does not report an error. Resuming an import really only occurs when the tarball validation logic detects an error when trying to `git add` files to your copy of the repository.
+
 `git-vendor-mirror` creates a variety of branches and tags to facilitate source code investigations later (i.e. "What modifications did we make to this source code? What changed between version 1.1.0 and 1.1.1?")
 
 As such, you'll need to push those tags to the repository of record, in addition to the import itself. Additionally, the branch that we've put the source code on will be named `PROJECT_NAME-upstream`, to indicate it's the branch tracking the upstream code. So, in our example, it would be `rapidjson-upstream`.
@@ -117,3 +129,49 @@ https://github.com/packetstash/acme-private-repos/acme-rapidjson/settings/branch
 If you're going to do this (and we heavily suggest that you do), it's best to do this early, before anyone has cloned the repository for use.
 
 7. That's it! You should use/develop against/point submodules for other (internal) projects to the `acme-master` branch.
+
+## Updating Source Code
+
+When taking future drops of code you've already imported, you can use the `update` mode to bring in those changes from upstream in a way that `git-vendor-mirror` can handle (and which will greatly simplify to colleagues what has happened, via a simplified commit graph and standardize commit messages).
+
+This process is relatively similar to the `import` process (in fact, it shares a lot of the same code). This means that it _can_ be a two-step process, since the sanity checking performed can halt the code update process, just as it can halt the import process. As always, nothing is pushed upstream, and the repository is left so the user can inspect the result before doing so.
+
+In the following example, we'll be updating to the `master` branch of the rapidjson project we imported before. You will need the same information as for an `import` operation, i.e. package name, (updated) package version, and vendor name. You will probably also want the same `--strip-path` option, so the update matches what was previously imported.
+
+It is recommended you do this in a fresh clone, so no important working directory files will be blown away (or mis-detected as in update error).
+
+In our previous example, this would look like (in a totally clean clone):
+
+```
+[you@machine workdir]$ ~/path-to/git-vendor-mirror/git-vendor-mirror \
+      update \
+      -V acme \
+      -n rapidjson \
+      -v 1.1.0dev0 \
+      -u https://github.com/miloyip/rapidjson/archive/master \
+      -p 1
+```
+
+This particular package has untracked files that are in the tarball itself, but also ignored by `.gitignore`; to fix this:
+
+```
+[you@machine workdir]$ git add -f bin/draft-04/schema bin/jsonschema/
+[you@machine workdir]$ git commit --amend
+
+```
+
+`git-vendor-mirror` then prompts you to resume the update process, after you've corrected the initial state of the update. **NOTE**: This will _not_ be necessary for source code packages that pass all of the validation checks. The secondary stage will occur automatically.
+
+```
+[you@machine workdir]$ ~/path-to/git-vendor-mirror/git-vendor-mirror \
+      resume-update \
+      -V acme \
+      -n rapidjson -v 1.1.0dev0
+```
+
+Then publish your update to the vendor origin repository, as was done for an `import`:
+
+```
+git push --tags origin rapidjson-upstream
+```
+
